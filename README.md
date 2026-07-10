@@ -96,7 +96,7 @@ Direct generation requires the companion [**PromptForge Connection**](https://gi
 custom node package installed in `ComfyUI/custom_nodes/` (separate
 install — see that package's own repository).
 
-1. Place a **PromptForge Connector** node in your ComfyUI graph (and, optionally, a **PromptForge Multi Lora Loader**, and a **PromptForge Image Input** node for i2i/i2v graphs), wired up per the node package's README.
+1. Place a **PromptForge Connector** node in your ComfyUI graph (and, optionally, a **PromptForge Multi Lora Loader** node for i2i/i2v graphs), wired up per the node package's README.
 2. In PromptForge's Builder tab, open the **ComfyUI** panel and tick **"ComfyUI connected?"**.
 3. Build your prompt as usual, then either:
    - **⚡ Generate prompt and copy** — assembles the prompt and copies it to the clipboard, same as always, ComfyUI untouched.
