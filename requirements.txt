@@ -1,0 +1,11 @@
+# Runtime dependencies for the PyQt6 build of PromptForge.
+#
+# PyQt6-Qt6 is pulled in automatically as a dependency of PyQt6 itself
+# (it ships the compiled Qt6 libraries); listed explicitly anyway so a
+# pinned/offline install doesn't have to resolve it transitively.
+PyQt6>=6.6
+PyQt6-Qt6>=6.6
+Pillow>=10.0
+
+# Packaging (only needed to build the .exe/.spec, not to run from source)
+pyinstaller>=6.3

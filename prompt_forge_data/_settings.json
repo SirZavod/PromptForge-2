@@ -1,0 +1,14 @@
+{
+  "theme": "custom",
+  "comfy_host": "127.0.0.1",
+  "comfy_port": 8188,
+  "section_collapsed_comfy_rail": true,
+  "custom_theme_base": "#1e1f26",
+  "custom_theme_accent": "#7c8cff",
+  "custom_theme_mode": "dark",
+  "custom_theme_bg_image": "/home/claude/session39/PromptForge/prompt_forge_data/theme/background.png",
+  "custom_theme_bg_fit": "stretch",
+  "custom_theme_bg_opacity": 100,
+  "custom_theme_card_alpha": 50,
+  "custom_theme_bg_blur": 0
+}
