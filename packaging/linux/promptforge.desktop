@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=PromptForge
+Comment=PromptForge
+Exec=PromptForge %F
+Icon=promptforge
+Terminal=false
+Categories=Graphics;Utility;
+StartupWMClass=PromptForge

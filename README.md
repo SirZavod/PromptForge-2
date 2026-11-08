@@ -25,7 +25,7 @@ top of everything the original text-to-image builder could do.
 - **LoRA Manager** — attach LoRAs to a generation either manually or automatically (pulled from whichever library entries — characters, outfits, styles, tools — are bound to one), tagged `[M]`(manual lora)/`[A]`(automatic lora) so you always know which is which. Validated against ComfyUI's live LoRA list before every submit, so a missing file is caught up front instead of silently skipping. Collapsible, and your slots/strengths persist between sessions.
 
 ### Library
-- **Library manager** — a built-in editor for your styles, scenarios, characters, outfits, and tools, with search, per-character "canon" outfits, an optional source URL per entry (for crediting/finding the original model or reference), and an optional bound LoRA (used by the LoRA Manager's auto slots, with an adjustable default strength right on the entry). While connected to ComfyUI, entries with a bound LoRA are color-coded right in the list — green if it's found, yellow if a same-named file was found elsewhere (worth double-checking), red if nothing matching exists at all.
+- **Library manager** — a built-in editor for your styles, scenarios, characters, outfits, and tools, with search, per-character "canon" outfits (optionally labelled with a human-friendly display alias such as "Office Suit" while the real `Character_Canon_N` name stays the key), an optional source URL per entry (for crediting/finding the original model or reference), and an optional bound LoRA (used by the LoRA Manager's auto slots, with an adjustable default strength right on the entry). While connected to ComfyUI, entries with a bound LoRA are color-coded right in the list — green if it's found, yellow if a same-named file was found elsewhere (worth double-checking), red if nothing matching exists at all.
 - **Active / Inactive entries** — mark any entry, or any whole folder, inactive without deleting it. Inactive entries and folders are skipped entirely by the Builder's dropdowns (not just greyed out), so a large library can be trimmed down for a session without losing anything — the Library tab itself still shows everything, dimmed, for browsing.
 - **Library subfolders** — organize entries within each category into folders (and nested subfolders) purely for browsing: drag an entry onto a folder, or right-click → **Move to…** for one-off or multi-select moves. Folders sort alphabetically above entries at every level (numbers sort numerically — "Outfit 2" before "Outfit 10" — not character-by-character), expand/collapse individually or all at once, and have zero effect on the Builder, search, or LoRA bindings — an entry's name stays the single thing that identifies it everywhere else. Canon outfits are filed automatically into an always-present **Canonical Outfits** folder so they don't clutter the regular outfit list. See [Library subfolders](#library-subfolders) below.
 - **Reference images (and video previews)** — attach a preview image, or a preview video for Video Action/Video Tool entries, to any library entry by dragging a file onto the editor or clicking to browse. Images are auto-converted, resized, and saved next to their entry. The preview size is adjustable with a slider and remembered between sessions.
@@ -33,13 +33,14 @@ top of everything the original text-to-image builder could do.
 - **Library export / import** — back up or share your whole library as a single zip (everything except the disposable ComfyUI preview cache). Importing merges new entries in by name and never overwrites, modifies, or even touches anything that already exists in your library, including Active/Inactive state and folder placement.
 
 ### History & Gallery
-- **History** — every generated prompt is saved automatically, with favorites and one-click restore back into the builder. While connected to ComfyUI, a history entry also records which LoRAs (and at what strength) were active for that specific generation, plus a one-click "Open image" that resolves to the same result the Gallery shows.
+- **History** — every generated prompt is saved automatically. Entries with an image (only generations run through ComfyUI get one) appear under **Generated Images**, every entry under **All**; the image/video preview, the prompt, LoRA/Generation/Negative detail cards and a copy button per field all sit in one pane. A missing file says so instead of silently disappearing, and ComfyUI's output folder is remembered between runs so an earlier session's image still opens after a restart.
 - **Gallery** — every image or video generated through ComfyUI this session shows up as a thumbnail, with always-visible action buttons, hover-to-reveal-in-explorer, and click-to-open-full-size.
 
 ### Look & feel
 - **Custom title bar and native window snapping** — a themed title bar that matches the rest of the app instead of the OS default, with real Windows Snap/Snap Layouts support (drag to an edge, or hover the maximize button) rather than losing that OS feature just for having a custom frame.
 - **Light / Dark / Custom themes** — pick a base and an accent color and the rest of the palette (backgrounds, borders, text, hover states) is derived automatically, with an automatic contrast check so text never goes unreadable against an unlucky color choice. A custom theme can also carry a user-uploaded background image, with adjustable card opacity and background blur.
 - **Sound notifications** — optional sounds for "generation ready", "image saved", and "entry added", each independently selectable (off / built-in / your own uploaded sound) and independently volume-controlled from the Settings page.
+- **Optional multi-character wrapper** — Settings can enclose each character's tags and outfit in a pair (round, square, pipe, or any custom prefix/suffix) when the Standard template has two or more characters. Off by default; single-character prompts and Custom templates are unaffected.
 - **In-app guide** — press **F1** or click **❓ Guide** anywhere in the app for a built-in walkthrough: first-run order of operations, how subfolders/Tools/LoRA Manager/the queue/Active-Inactive actually work, and the ComfyUI "last active workflow tab" behavior below. Multi-language from the start (English, Russian, Mandarin Chinese and Japanese guide variations are available).
 - All data is stored locally in plain `.txt` / `.json` / `.jpg` files — easy to back up, sync, or edit by hand.
 
@@ -87,6 +88,13 @@ To build locally instead:
 pip install pyinstaller
 pyinstaller PromptForge.spec
 ```
+
+> **Always build with `pyinstaller PromptForge.spec`.** Running
+> `pyinstaller main.py` makes PyInstaller generate a fresh spec with
+> `datas=[]`, so the bundled sounds and other assets are silently left
+> out of the build (this was the root cause of the "no sound in the exe"
+> bug). If a build behaves differently from `python main.py`, check that
+> it came from the committed spec.
 
 The result lands in `dist/`, with `icon.ico` (Windows) / `icon.png` (Linux) picked up automatically.
 
@@ -163,6 +171,32 @@ touching a single `.txt`/`.jpg`/`.meta.json` file on disk.
 - **Canon outfits** — automatically filed into a dedicated **Canonical
   Outfits** folder the moment an outfit is marked as a character's canon
   outfit. That folder is system-managed: it can't be renamed or deleted.
+- **Canon display aliases** — a canon outfit's Name field is optional and
+  acts as a human-friendly label (for example "Office Suit"). It never
+  renames the file or changes the real `Character_Canon_N` key: the
+  Library list shows `Character — Canon 1 | Office Suit`, the Builder
+  outfit selector shows the alias while storing `Canon N`, and search
+  matches both. Unchecking "canon" hides the alias without deleting it;
+  Duplicate copies the entry without the alias. The editor shows no
+  explanatory text about real names; they are documented in the in-app
+  Guide.
+- **Character variations** — a character can own alternative looks
+  ("human", "fox-human") without becoming separate characters. Select a
+  saved character and use **Add variation…** in its Variations card; the
+  variation starts as a copy of the saved text (later edits to the parent
+  do not change it). Variations are nested child rows under their parent
+  in the list and travel with it when it is moved, renamed or deleted
+  (renaming/deleting asks first and names what is affected). The Name
+  field of a variation is its display label; the real file name
+  `<Parent>__V<n>` never changes. Canon outfits are inherited from the
+  parent; a LoRA bound to a variation replaces the parent's, otherwise the
+  parent's applies. In the Builder, Who lists parent characters only and a
+  **Variant:** row (default = the parent) appears for characters that have
+  active variations, in Standard and Custom templates; in Standard slots
+  the 👁 next to Who previews the character and the 👁 next to Variant
+  previews the chosen variation. An older build
+  opened on the same data shows variations as ordinary characters and may
+  drop their label/link when saving.
 
 ## Active / Inactive entries
 
@@ -266,6 +300,20 @@ behavior from above. English is fully written; other languages are
 switchable from the same window and explicitly marked if a section is
 still pending translation, rather than silently falling back to
 English without saying so.
+
+## Changelog
+
+The full per-session history lives in [CHANGELOG.md](CHANGELOG.md).
+Most recent changes:
+
+- **Character variations** — alternative looks for one character
+  (nested in the Library, a *Variant* row in Builder), see above.
+- **Canon outfit aliases** and a **multi-character wrapper** setting.
+- **History rework** — new layout, `Generated Images` / `All` filter,
+  per-field copy buttons, remembered ComfyUI output folder.
+- **Crash log** (`crash.log`) and sound diagnostics (`sound_debug.log`).
+- **UI polish** — theme-aware tree arrows, a 👁 preview on the Variant
+  row, no explanatory clutter in the Library editor.
 
 ## Data & storage
 

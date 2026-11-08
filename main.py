@@ -47,10 +47,13 @@ from backend.constants import (
     DEFAULT_BACKGROUND_OPACITY, DEFAULT_CARD_ALPHA, MAX_BACKGROUND_BLUR,
     SETTINGS_FILE_NAME, SOUND_ACTIONS, SOUND_ACTION_LABELS, THEMES,
     PIPELINE_MODE_LABELS, PIPELINE_MODE_SHORT_LABELS, PIPELINE_MODE_T2I,
+    CHARACTER_WRAPPER_LABELS, CHARACTER_WRAPPER_PREFIX_SETTING,
+    CHARACTER_WRAPPER_SETTING, CHARACTER_WRAPPER_SUFFIX_SETTING,
 )
 from backend.file_manager import FileManagerError, init_folders, load_json, save_json
 from backend import sound_manager
 from backend import theme_background
+from backend.crash_log import install_excepthook
 from backend.theme_derive import apply_surface_alpha, contrast_ratio, derive_palette
 from ui.theme import apply_theme
 from ui.title_bar import TitleBar
@@ -216,6 +219,14 @@ class MainWindow(QMainWindow):
         self.data_dir = os.path.join(_app_root_dir(), DATA_DIR_NAME)
         init_folders(self.data_dir, CATEGORIES)
 
+        # Session 53 (Q3): unhandled exceptions — in particular ones
+        # raised inside Qt slots, which PyQt otherwise turns into a hard
+        # abort with no traceback — are logged to
+        # `prompt_forge_data/crash.log` and shown as a non-fatal dialog.
+        # Installed as early as possible so construction-time errors are
+        # caught too; the callback only touches QMessageBox.
+        install_excepthook(self.data_dir, notify=self._notify_unexpected_error)
+
         self.settings_file = os.path.join(self.data_dir, SETTINGS_FILE_NAME)
         self.settings = load_json(self.settings_file, {"theme": "dark"})
         _theme_setting = self.settings.get("theme", "dark")
@@ -271,6 +282,14 @@ class MainWindow(QMainWindow):
         self._reset_sound_actions = sound_manager.startup_check(self.data_dir)
         if self._reset_sound_actions:
             self.settings = load_json(self.settings_file, self.settings)
+
+        # Session 51: the bundled ("Default") wavs live *inside* the
+        # PyInstaller bundle, so a build that skipped `PromptForge.spec`
+        # (whose `datas` entry is what copies `assets/sounds`) makes
+        # every "Default" choice silently resolve to nothing. Record
+        # that once in `sound_debug.log` rather than leaving the
+        # packaging mistake undiagnosable from inside the app.
+        sound_manager.startup_assets_check(self.data_dir)
 
         self._apply_app_icon()
         self._default_window_size = self._size_to_screen()
@@ -335,7 +354,7 @@ class MainWindow(QMainWindow):
             self.data_dir, self._active_colors(), self.settings, self.settings_file)
         self.tab_library = LibraryTab(
             self.data_dir, self._active_colors(), self.settings, self.settings_file)
-        self.tab_history = HistoryTab(self.data_dir)
+        self.tab_history = HistoryTab(self.data_dir, self._active_colors())
         self.tab_gallery = GalleryTab(self._active_colors())
         # Session 18: LoRA is a real page now, built by BuilderTab
         # itself (it owns all the slot data/backend wiring already) --
@@ -386,6 +405,23 @@ class MainWindow(QMainWindow):
         # plain-attribute cross-tab wiring pattern as the three lines
         # above.
         self.tab_history.gallery_tab = self.tab_gallery
+
+        # Session 54: `_comfy_previews/` is wiped on every startup, so a
+        # History image from an earlier session can only be found in
+        # ComfyUI's own output folder. That path is learned when ComfyUI
+        # connects, which used to mean "connect first or the preview
+        # says the file is gone". Remember it across runs instead:
+        # `_remember_comfy_output_dir` stores it on every successful
+        # connect, this seeds Gallery (and therefore History) before any
+        # connection has happened in the new session.
+        _saved_comfy_output_dir = self.settings.get("comfy_output_dir")
+        if _saved_comfy_output_dir:
+            self.tab_gallery.comfy_output_dir = _saved_comfy_output_dir
+            # History rendered its initial selection while `gallery_tab`
+            # was still None, so its preview says "Connect to ComfyUI"
+            # even though the folder is now known. Re-render that entry
+            # instead of waiting for the user to reselect it.
+            self.tab_history.refresh_current_image()
 
         # BuilderTab records straight to history on every successful
         # "Generate prompt and copy" while ComfyUI isn't connected; once
@@ -568,13 +604,12 @@ class MainWindow(QMainWindow):
         return rail
 
     def _build_settings_page(self) -> QWidget:
-        """Session 19: real Settings page. Two sections today —
+        """Session 19: real Settings page. Sections today —
         ComfyUI connection (host/port, moved out of Builder's old
-        "4. ComfyUI" panel) and Appearance (the theme toggle, which
-        has had working logic since Session 14.5 with no UI attached
-        until now) — plus a labeled placeholder for whatever gets added
-        later, so future settings have an obvious home instead of
-        landing on whichever tab is convenient at the time.
+        "4. ComfyUI" panel), Appearance (the theme toggle, which has had
+        working logic since Session 14.5 with no UI attached until now),
+        Sounds (Session 37), and Prompt assembly (Session 55's optional
+        multi-character wrapper, off by default).
 
         Guide's own language setting deliberately does **not** get a
         control here — it already has one inside `GuideDialog` itself,
@@ -823,16 +858,61 @@ class MainWindow(QMainWindow):
 
         outer.addWidget(sounds_card)
 
-        # ---- Placeholder for future settings ----
-        placeholder_card = QFrame()
-        placeholder_card.setObjectName("Card")
-        placeholder_card.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
-        placeholder_col = QVBoxLayout(placeholder_card)
-        placeholder_col.setContentsMargins(16, 14, 16, 14)
-        lbl_placeholder = QLabel("More settings coming later.")
-        lbl_placeholder.setObjectName("dim")
-        placeholder_col.addWidget(lbl_placeholder)
-        outer.addWidget(placeholder_card)
+        # ---- Prompt assembly (Session 55) ----
+        wrapper_card = QFrame()
+        wrapper_card.setObjectName("Card")
+        wrapper_card.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        wrapper_col = QVBoxLayout(wrapper_card)
+        wrapper_col.setContentsMargins(16, 14, 16, 14)
+        wrapper_col.setSpacing(8)
+
+        lbl_wrapper_heading = QLabel("Prompt assembly")
+        lbl_wrapper_heading.setFont(QFont("Segoe UI", 12, QFont.Weight.Bold))
+        wrapper_col.addWidget(lbl_wrapper_heading)
+
+        wrapper_row = QHBoxLayout()
+        wrapper_row.addWidget(QLabel("Multi-character wrapper:"))
+        self.settings_combo_wrapper = QComboBox()
+        self.settings_combo_wrapper.setMinimumWidth(150)
+        for mode, label in CHARACTER_WRAPPER_LABELS.items():
+            self.settings_combo_wrapper.addItem(label, mode)
+        current_mode = self.settings.get(CHARACTER_WRAPPER_SETTING, "none")
+        wrapper_index = self.settings_combo_wrapper.findData(current_mode)
+        self.settings_combo_wrapper.setCurrentIndex(wrapper_index if wrapper_index >= 0 else 0)
+        self.settings_combo_wrapper.setToolTip(
+            "Optional. When the Standard template has two or more "
+            "characters, each character's tags and outfit are enclosed "
+            "in their own pair. Custom templates are never affected.")
+        self.settings_combo_wrapper.currentIndexChanged.connect(self._on_wrapper_mode_changed)
+        wrapper_row.addWidget(self.settings_combo_wrapper, 1)
+        wrapper_col.addLayout(wrapper_row)
+
+        self.wrapper_custom_row = QWidget()
+        wrapper_custom_row_layout = QHBoxLayout(self.wrapper_custom_row)
+        wrapper_custom_row_layout.setContentsMargins(0, 0, 0, 0)
+        wrapper_custom_row_layout.addWidget(QLabel("Prefix:"))
+        self.settings_ent_wrapper_prefix = QLineEdit(
+            self.settings.get(CHARACTER_WRAPPER_PREFIX_SETTING, "") or "")
+        self.settings_ent_wrapper_prefix.setMaxLength(8)
+        self.settings_ent_wrapper_prefix.editingFinished.connect(
+            self._on_wrapper_custom_changed)
+        wrapper_custom_row_layout.addWidget(self.settings_ent_wrapper_prefix, 1)
+        wrapper_custom_row_layout.addWidget(QLabel("Suffix:"))
+        self.settings_ent_wrapper_suffix = QLineEdit(
+            self.settings.get(CHARACTER_WRAPPER_SUFFIX_SETTING, "") or "")
+        self.settings_ent_wrapper_suffix.setMaxLength(8)
+        self.settings_ent_wrapper_suffix.editingFinished.connect(
+            self._on_wrapper_custom_changed)
+        wrapper_custom_row_layout.addWidget(self.settings_ent_wrapper_suffix, 1)
+        wrapper_col.addWidget(self.wrapper_custom_row)
+
+        self.lbl_wrapper_hint = QLabel()
+        self.lbl_wrapper_hint.setObjectName("dim")
+        self.lbl_wrapper_hint.setWordWrap(True)
+        wrapper_col.addWidget(self.lbl_wrapper_hint)
+
+        self._refresh_wrapper_controls()
+        outer.addWidget(wrapper_card)
 
         outer.addStretch(1)
         return page
@@ -947,6 +1027,48 @@ class MainWindow(QMainWindow):
         self.settings["comfy_port"] = port
         self._save_settings()
 
+    # ------------------------------------------------------------------
+    # Prompt assembly card (Session 55)
+    # ------------------------------------------------------------------
+    def _on_wrapper_mode_changed(self, _index: int):
+        mode = self.settings_combo_wrapper.currentData() or "none"
+        self.settings[CHARACTER_WRAPPER_SETTING] = mode
+        self._save_settings()
+        self._refresh_wrapper_controls()
+
+    def _on_wrapper_custom_changed(self):
+        prefix = self.settings_ent_wrapper_prefix.text()
+        suffix = self.settings_ent_wrapper_suffix.text()
+        self.settings[CHARACTER_WRAPPER_PREFIX_SETTING] = prefix
+        self.settings[CHARACTER_WRAPPER_SUFFIX_SETTING] = suffix
+        self._save_settings()
+        self._refresh_wrapper_controls()
+
+    def _refresh_wrapper_controls(self):
+        """Shows the custom prefix/suffix row only for the Custom mode
+        and keeps the hint line truthful about what will actually reach
+        the prompt — in particular, Custom with one half empty is off."""
+        mode = self.settings_combo_wrapper.currentData() or "none"
+        is_custom = mode == "custom"
+        self.wrapper_custom_row.setVisible(is_custom)
+        if not is_custom:
+            if mode == "none":
+                hint = "Off — prompts are assembled exactly as before."
+            else:
+                hint = ("Applied only to the Standard template with two or "
+                        "more characters: each character's tags and outfit "
+                        "get their own pair. Custom templates are unchanged.")
+        else:
+            prefix = self.settings_ent_wrapper_prefix.text()
+            suffix = self.settings_ent_wrapper_suffix.text()
+            if prefix and suffix:
+                hint = (f"Custom pair active: {prefix} … {suffix}. Applied only "
+                        "to the Standard template with two or more characters.")
+            else:
+                hint = ("Both prefix and suffix are required. The wrapper stays "
+                        "off until both are filled in.")
+        self.lbl_wrapper_hint.setText(hint)
+
     def _active_colors(self) -> dict:
         """Session 39: the colors dict actually in effect right now --
         a plain `THEMES` lookup for "dark"/"light", or a freshly derived
@@ -960,6 +1082,19 @@ class MainWindow(QMainWindow):
                 self.settings.get("custom_theme_mode", "dark"),
             )
         return THEMES[self.theme_name]
+
+    def _notify_unexpected_error(self, summary: str, log_path: str):
+        """Non-fatal dialog for `backend.crash_log.install_excepthook`.
+
+        Deliberately plain `QMessageBox` (what the rest of `main.py`
+        already uses) and deliberately short: the traceback lives in the
+        log file, the dialog only says that the app survived."""
+        QMessageBox.critical(
+            self,
+            "Unexpected error",
+            f"{summary}\n\nDetails were written to:\n{log_path}\n\n"
+            "The app will try to keep running.",
+        )
 
     def _apply_theme_colors(self, colors: dict = None):
         """Pushes a colors dict to every themed surface. Defaults to
@@ -996,6 +1131,9 @@ class MainWindow(QMainWindow):
         self.tab_builder.set_colors(qss_colors)
         self.tab_library.set_colors(qss_colors)
         self.tab_gallery.set_colors(qss_colors)
+        # Session 52: History's image viewer paints its own card/
+        # placeholder background by hand, so it needs the palette too.
+        self.tab_history.set_colors(qss_colors)
         self._refresh_background_surface(colors)
 
     def _refresh_background_surface(self, colors: dict):
@@ -1294,6 +1432,31 @@ class MainWindow(QMainWindow):
     def _on_comfy_connection_changed(self, connected: bool):
         self.btn_sidebar_comfy.setText("Disconnect" if connected else "Run")
         self._refresh_sidebar_comfy_status()
+        if connected:
+            self._remember_comfy_output_dir()
+
+    def _remember_comfy_output_dir(self):
+        """Session 54: persists ComfyUI's output folder (learned from the
+        connector's `/promptforge/output_dir` during a successful
+        connect) into `_settings.json`.
+
+        Why: `_comfy_previews/` is session-only by design, so after a
+        restart the only surviving copy of a History image is ComfyUI's
+        real output file — and History cannot resolve it without this
+        folder. Persisting it means previous-session images show up
+        immediately, instead of only after the user reconnects.
+
+        Additive settings key; never removed on disconnect (the folder
+        is still the best guess for where last session's images live).
+        Best-effort: a read-only settings file just means the path is
+        remembered for this run only.
+        """
+        out_dir = getattr(self.tab_builder, "comfy_output_dir", None)
+        if not out_dir:
+            return
+        if self.settings.get("comfy_output_dir") != out_dir:
+            self.settings["comfy_output_dir"] = out_dir
+            self._save_settings()
 
     def _on_comfy_status_message(self, _text: str):
         # No longer mirrored verbatim (Session 14.5 step 3) — connection

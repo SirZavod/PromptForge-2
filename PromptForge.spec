@@ -31,7 +31,14 @@ a = Analysis(
     pathex=[SPEC_DIR],
     binaries=[],
     datas=[("assets/sounds", "assets/sounds")],
-    hiddenimports=[],
+    # Session 51: `backend/sound_manager.py` imports QtMultimedia inside
+    # a try/except (so headless test environments can import the module
+    # at all), which is exactly the shape a frozen build can quietly
+    # drop -- and a missing QtMultimedia is indistinguishable from
+    # "sound notifications are off". Listing it explicitly keeps the
+    # module and its own PyQt6 hook (which collects the multimedia
+    # backend plugins) in the bundle.
+    hiddenimports=["PyQt6.QtMultimedia"],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
