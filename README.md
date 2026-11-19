@@ -23,17 +23,23 @@ top of everything the original text-to-image builder could do.
 - **Image Edit (img2img) and Img2Video (img2vid) modes** — a third mode switch alongside the standard text-to-image builder. Load a starting image right inside PromptForge (drag-and-drop or a file picker — no need to Alt-Tab into the ComfyUI browser tab to use its own LoadImage widget) and PromptForge uploads and patches it into the active workflow automatically, the same way it already handles prompt text and LoRA selections. Each mode gets its own Library categories (**Image Actions** / **Video Actions**, plus mode-specific **Tools**) and its own Custom template variables, so i2i/i2v prompt building doesn't get mixed up with t2i entries. An embedded video player shows the finished clip for Img2Video generations without leaving the app.
 - **Direct ComfyUI generation with a queue** — connect to a running ComfyUI instance (via the companion custom node) and send your assembled prompt straight to it with **🎨 Generate in ComfyUI**, no copy-pasting. Every click queues a generation (with its own frozen snapshot of LoRAs/strengths/seed) rather than refusing while something's already running — a separate **⏹ Stop** button cancels only the one currently in progress, and **🗑 Clear queue** drops everything still waiting (never the one already generating, matching ComfyUI's own queue UI). Watch live preview frames while it samples, and get the finished image or video back in the Builder tab and the Gallery. Prefer to just build the text? **⚡ Generate prompt and copy** still does that, with or without ComfyUI connected. See [Connecting to ComfyUI](#connecting-to-comfyui) below.
 - **LoRA Manager** — attach LoRAs to a generation either manually or automatically (pulled from whichever library entries — characters, outfits, styles, tools — are bound to one), tagged `[M]`(manual lora)/`[A]`(automatic lora) so you always know which is which. Validated against ComfyUI's live LoRA list before every submit, so a missing file is caught up front instead of silently skipping. Collapsible, and your slots/strengths persist between sessions.
+- **Sampling card** — Steps, CFG, Sampler and Scheduler sit in the Builder rail next to Resolution and are filled from the active model's preset. Empty Steps / CFG means "use the workflow's value"; Sampler and Scheduler have **From workflow** as their default row. Everything shown there is frozen into each queue item when you click Generate.
 
 ### Library
-- **Library manager** — a built-in editor for your styles, scenarios, characters, outfits, and tools, with search, per-character "canon" outfits (optionally labelled with a human-friendly display alias such as "Office Suit" while the real `Character_Canon_N` name stays the key), an optional source URL per entry (for crediting/finding the original model or reference), and an optional bound LoRA (used by the LoRA Manager's auto slots, with an adjustable default strength right on the entry). While connected to ComfyUI, entries with a bound LoRA are color-coded right in the list — green if it's found, yellow if a same-named file was found elsewhere (worth double-checking), red if nothing matching exists at all.
+- **Library manager** — a built-in editor for your styles, scenarios, characters, outfits, and tools, with search, per-character "canon" outfits (optionally labelled with a human-friendly display alias such as "Office Suit" while the real `Character_Canon_N` name stays the key), an optional source URL per entry (for crediting/finding the original model or reference), and one bound LoRA per model (used by the LoRA Manager's auto slots, with an adjustable strength right on the entry). While connected to ComfyUI, entries with a bound LoRA are color-coded right in the list — green if it's found, yellow if a same-named file was found elsewhere (worth double-checking), red if nothing matching exists at all.
 - **Active / Inactive entries** — mark any entry, or any whole folder, inactive without deleting it. Inactive entries and folders are skipped entirely by the Builder's dropdowns (not just greyed out), so a large library can be trimmed down for a session without losing anything — the Library tab itself still shows everything, dimmed, for browsing.
 - **Library subfolders** — organize entries within each category into folders (and nested subfolders) purely for browsing: drag an entry onto a folder, or right-click → **Move to…** for one-off or multi-select moves. Folders sort alphabetically above entries at every level (numbers sort numerically — "Outfit 2" before "Outfit 10" — not character-by-character), expand/collapse individually or all at once, and have zero effect on the Builder, search, or LoRA bindings — an entry's name stays the single thing that identifies it everywhere else. Canon outfits are filed automatically into an always-present **Canonical Outfits** folder so they don't clutter the regular outfit list. See [Library subfolders](#library-subfolders) below.
 - **Reference images (and video previews)** — attach a preview image, or a preview video for Video Action/Video Tool entries, to any library entry by dragging a file onto the editor or clicking to browse. Images are auto-converted, resized, and saved next to their entry. The preview size is adjustable with a slider and remembered between sessions.
 - **LoRA dependency checking** — a one-click scan of your whole library against ComfyUI's current LoRA list, so you can confirm everything a downloaded library expects is actually in place before generating dozens of characters, not after a confusing result on one of them. If something's missing, it can search for a same-named file elsewhere and offer it as a candidate — applied one at a time with your confirmation, or all at once if every candidate is an unambiguous single match. A genuine name collision (two different LoRAs sharing a filename, e.g. for different base models) is always shown as a real choice, never auto-picked.
 - **Library export / import** — back up or share your whole library as a single zip (everything except the disposable ComfyUI preview cache). Importing merges new entries in by name and never overwrites, modifies, or even touches anything that already exists in your library, including Active/Inactive state and folder placement.
 
+### Models (base-model presets)
+- **One LoRA list per base model** — a LoRA is trained for one base model, so the same character often needs a different one elsewhere. A *model* is a named preset for one base model (for example "Anima 2.9b"), and every Library entry can hold one LoRA per model. The active model is chosen in Settings and decides which list the Builder uses; an entry is never silently given a LoRA from the wrong base model.
+- **Presets, not just names** — every model (Default included) can carry its own diffusion model, text encoder, VAE, text-encoder type, Steps, CFG, Sampler and Scheduler, picked from what ComfyUI actually has. Any field left on **Workflow default** leaves your graph untouched.
+- **Shared lists** — a finetune can reuse another model's LoRA list (**Same as Default** / **Same as <model>**) instead of duplicating every binding, and Active / Inactive is kept per list.
+
 ### History & Gallery
-- **History** — every generated prompt is saved automatically. Entries with an image (only generations run through ComfyUI get one) appear under **Generated Images**, every entry under **All**; the image/video preview, the prompt, LoRA/Generation/Negative detail cards and a copy button per field all sit in one pane. A missing file says so instead of silently disappearing, and ComfyUI's output folder is remembered between runs so an earlier session's image still opens after a restart.
+- **History** — every generated prompt is saved automatically. Entries with an image (only generations run through ComfyUI get one) appear under **Generated Images**, every entry under **All**; the image/video preview, the prompt, the LoRA / Generation / Negative detail cards (the Generation card also records the model that produced the run, with its files, type and sampling values) and a copy button per field all sit in one pane. A missing file says so instead of silently disappearing, and ComfyUI's output folder is remembered between runs so an earlier session's image still opens after a restart.
 - **Gallery** — every image or video generated through ComfyUI this session shows up as a thumbnail, with always-visible action buttons, hover-to-reveal-in-explorer, and click-to-open-full-size.
 
 ### Look & feel
@@ -57,7 +63,7 @@ top of everything the original text-to-image builder could do.
 - Python 3.9+ (Windows or Linux; see [Data & storage](#data--storage) for where files live on each)
 - [`PyQt6`](https://pypi.org/project/PyQt6/) — the UI toolkit
 - [`Pillow`](https://pypi.org/project/pillow/) — image conversion, resizing, and previews for library reference images and the Gallery
-- A running [ComfyUI](https://github.com/comfyanonymous/ComfyUI) instance with the **PromptForge Connection** custom node package installed — only if you want direct ComfyUI generation. Everything else works fully without it.
+- A running [ComfyUI](https://github.com/comfyanonymous/ComfyUI) instance with the **PromptForge Connection** custom node package installed (node pack **1.2.0 or newer** for model presets: text-encoder type, Steps and CFG) — only if you want direct ComfyUI generation. Everything else works fully without it.
 
 ### Run from source
 
@@ -105,10 +111,11 @@ custom node package installed in `ComfyUI/custom_nodes/` (separate
 install — see that package's own repository).
 
 1. Place a **PromptForge Connector** node in your ComfyUI graph (and, optionally, a **PromptForge Multi Lora Loader** node for i2i/i2v graphs), wired up per the node package's README.
-2. In PromptForge's Builder tab, open the **ComfyUI** panel and tick **"ComfyUI connected?"**.
-3. Build your prompt as usual, then either:
+2. To let model presets switch models, add the three **PromptForge Diffusion / Clip / VAE Loaders**, wire the Connector's `steps` / `cfg` outputs to your sampler, and let the app patch their widgets — see [Models](#models-base-model-presets). The text-encoder type, Steps and CFG need node pack **1.2.0 or newer**; Sampler and Scheduler are patched into stock ComfyUI nodes and work with any pack version.
+3. In PromptForge's Builder tab, open the **ComfyUI** panel and tick **"ComfyUI connected?"**.
+4. Build your prompt as usual, then either:
    - **⚡ Generate prompt and copy** — assembles the prompt and copies it to the clipboard, same as always, ComfyUI untouched.
-   - **🎨 Generate in ComfyUI** — patches your prompt/negative prompt/seed/resolution (and LoRA Manager selections, and the loaded input image for i2i/i2v, if any) into the live graph and submits it. The **"Latest ComfyUI image"** panel shows live preview frames while it samples, then the finished result — which also lands in the **Gallery** tab.
+   - **🎨 Generate in ComfyUI** — patches your prompt / negative prompt / seed / resolution, the LoRA Manager selections, the active model's files / type / Steps / CFG / Sampler / Scheduler, and the loaded input image for i2i/i2v (if any) into the live graph and submits it. The **"Latest ComfyUI image"** panel shows live preview frames while it samples, then the finished result — which also lands in the **Gallery** tab.
 
 Live preview depends entirely on ComfyUI's own **Settings → Comfy →
 Execution → Live preview method**. If it's set to `none`, no frames
@@ -143,6 +150,33 @@ browser tab, and submits to that. Concretely:
 
 **Rule of thumb:** whichever ComfyUI workflow tab was open last is where
 the job is going.
+
+### How model presets are patched into the graph
+
+Everything is opt-in and tolerant — a preset can never make a run fail
+just because the graph doesn't have a matching node:
+
+- **Empty field = hands off.** A field left on **Workflow default** (or a
+  blank Steps / CFG) never touches the workflow, field by field.
+- **Exactly one node per target.** Diffusion model, text encoder and VAE
+  are written into the single **PromptForge Diffusion / Clip / VAE Loader**
+  node; the text-encoder `type` only into the **PromptForge Clip Loader**
+  (a stock `CLIPLoader` is left alone). Sampler and Scheduler go into the
+  single `KSampler` / `KSamplerAdvanced` node (both classes counted
+  together). No such node → nothing happens; two or more → that field is
+  skipped and a status line names the class.
+- **Links are never overwritten.** If a widget has been turned into an
+  input fed by another node (e.g. a Primitive driving `sampler_name`),
+  PromptForge leaves it and says so in the status line.
+- **Patching happens on the fetched copy of the graph**, so nothing is
+  saved into your ComfyUI canvas and a preset can't leak into the next
+  model.
+- **GGUF** files are listed and loaded only if the third-party
+  [ComfyUI-GGUF](https://github.com/city96/ComfyUI-GGUF) pack is installed;
+  it isn't part of ComfyUI or PromptForge. A GGUF text encoder may accept
+  fewer `type` values than the stock loader — ComfyUI has the last word.
+- The first generation after switching models is slower, because ComfyUI
+  has to load the new weights.
 
 ## Library subfolders
 
@@ -217,6 +251,10 @@ permanently.
 - An entry is inactive if it's flagged itself, or if any parent folder
   is flagged — checked live, nothing is silently propagated onto the
   entry itself.
+- With extra models, state is kept per LoRA list: for a model other than
+  Default, an entry that carries a LoRA under another list but none
+  under this one is inactive by default, and assigning a LoRA under this
+  model wakes it once. See [Models](#models-base-model-presets).
 
 ## Tools
 
@@ -239,6 +277,121 @@ reordered everything else via **Block order…**.
 Tools work in both the Standard builder (its own collapsible "▸ Tools"
 section, collapsed by default) and Custom templates, via the `[Tool]`
 variable.
+
+## Models (base-model presets)
+
+A LoRA is trained for one base model, so the same character usually needs a
+different LoRA when you move it to another base. PromptForge keeps **one LoRA
+list per model**: a *model* is a named preset for one base model (for example
+"Anima 2.9b") that holds everything needed to switch to it — diffusion model,
+text encoder, VAE, the text encoder's `type`, and optionally Steps, CFG,
+Sampler and Scheduler.
+
+**Default** is implicit: the LoRAs you already bound to your entries *are* the
+Default model. Nothing is converted, a library with no extra models behaves
+exactly as before, and Default is always called "Default" — it cannot be
+renamed.
+
+### Settings → Models
+
+The card sits at the bottom of the Settings page. Every model — Default first —
+is a collapsed row with a one-line summary; click it to expand.
+
+- **Active model:** chooses the model the Builder works with. It applies at
+  once, without a restart, and is remembered between sessions.
+- **+ Add model** adds a model (at most 8 besides Default); each row has
+  **Name:**, **Duplicate** and **Delete**. Deleting asks first and says how
+  many entries and other models are affected.
+- **Diffusion model:**, **Text encoder:**, **VAE:**, **Text encoder type:**,
+  **Sampler:** and **Scheduler:** are pickers with two rows — **Workflow
+  default** (leave that part of the graph alone) and **Assign…** (a searchable
+  list of what ComfyUI actually has). Nothing can be typed by hand, so a file
+  ComfyUI doesn't know cannot be selected.
+- **Steps:** (1–10000) and **CFG:** (0–100, dot or comma) can stay empty,
+  meaning "from workflow".
+- The card needs ComfyUI: its lists come from ComfyUI's live model folders and
+  node definitions. Without a connection it shows **Connect to ComfyUI to
+  manage models**.
+- A **GGUF** text encoder may accept a narrower set of types than the stock
+  loader. A type that passes validation can still fail while the graph runs —
+  ComfyUI has the last word, so pick one your GGUF loader accepts.
+
+### LoRA list source
+
+For every model except Default, **LoRA list:** offers **Own**, **Same as
+Default** or **Same as <model>**. A shared model has no bindings of its own and
+uses the source model's list — exactly what a finetune needs. Bindings made
+while the list was its own are kept, not deleted: they are dormant while the
+list is shared and come back when you switch to **Own**. A model that other
+models point at cannot change its list until they are re-pointed; its selector
+is disabled and the tooltip names them.
+
+Bindings are edited per entry in the Library: the LoRA card's **Model:**
+selector decides which model **Assign**, **Clear** and the strength spinner act
+on. It is independent of the active model (you can prepare another model
+without switching to it), stays on your choice while you move between entries,
+and only lists Default plus models that own their list.
+
+### Strict behaviour
+
+An entry with no LoRA under the active model's list contributes **no LoRA**:
+PromptForge never substitutes one from another base model. Pressing **🎨
+Generate in ComfyUI** in that situation lists the affected entries in a
+**Missing LoRA for model** window and asks whether to generate without them
+anyway — it is a question, not an error. Entries with no LoRA at all (most
+styles and scenarios) never trigger it, and the missing-file check still runs
+first and still stops the run.
+
+### Sampling
+
+Builder's rail runs Seed → Resolution → **Sampling** → Tools. Steps and CFG are
+editable; Sampler and Scheduler are dropdowns whose first row, **From
+workflow**, leaves that widget alone. Switching the active model fills the card
+from its preset; an empty preset value clears the field instead of inheriting
+the previous model's value, and a manual edit lasts until the next switch.
+
+Sampler and Scheduler are written straight into the workflow's sampler node;
+Steps and CFG travel through the PromptForge Connector, so its `steps` / `cfg`
+outputs have to be wired to the sampler's own inputs. Exactly one sampler node
+is patched — `KSampler` and `KSamplerAdvanced` counted together; with two or
+more of either, those fields are left alone and a status line says why. A
+widget that is fed by a link is never overwritten either.
+
+### Files, queue and History
+
+Before anything is submitted, the three file names are checked against
+ComfyUI's live lists. A missing one opens **Missing model file** and the run
+does not start; when the lists are not loaded (ComfyUI offline, an error, an
+older node pack) the check is skipped with a status line instead of a false
+miss.
+
+The active model is frozen into each queue item at click time, together with
+its files, `type`, Steps, CFG, Sampler and Scheduler — switching models
+afterwards never changes an item already queued. History records the same
+snapshot: the Generation card shows **Model:** and the values the run used,
+while entries created before this feature keep their old Resolution / Seed /
+Steps card.
+
+### Active / Inactive per list
+
+Default keeps its usual Active / Inactive map; each model that owns its own
+list gets a separate one. For a non-Default model, an entry that carries a LoRA
+under another list but none under this one is inactive by default, and
+assigning a LoRA under this model wakes it once — after that, explicit choices
+are never changed automatically.
+
+### Export, import and older builds
+
+Models travel with a Library export and are matched by their internal id, never
+by name. Models the zip brings that you did not have are added and reported as
+**Added LoRA models** (a name that is already taken gets a " (2)" suffix);
+existing ids keep their local fields. A shared model keeps its source when
+that source is in the archive too, and falls back to **Same as Default**
+otherwise. Per-list Active / Inactive maps travel with their model.
+
+A PromptForge build from before Models doesn't know the new fields and bindings
+and will drop them the next time it saves an entry — keep one version per
+library.
 
 ## Generation queue
 
@@ -263,15 +416,20 @@ behind it" from "nothing running, *N* waiting to start".
 
 **🔍 Check LoRA dependencies** (Library tab, requires a ComfyUI
 connection) scans every entry in every category — including canon
-outfits — for a bound LoRA, and reports anything ComfyUI's current LoRA
-list doesn't actually have, grouped by which entry(ies) use it.
+outfits — for its bound LoRAs (Default plus every model that owns its own
+list), and reports anything ComfyUI's current LoRA list doesn't actually
+have, grouped by which entry(ies) use it and naming the list next to each
+row.
 
 If something's missing, **🔎 Find candidates** searches ComfyUI's LoRA
 list for files with the same *filename* under a different folder. A
 single match can be applied with one click — or all single-match
 candidates at once — but a **name collision** (two or more files
 sharing a filename, e.g. for two different base models) is always
-shown as a real choice, never auto-picked.
+shown as a real choice, never auto-picked. Applying a candidate
+re-points exactly the binding that was missing and leaves the entry's
+video, alias and variation data alone. Dormant bindings of a model that
+shares another model's list are skipped.
 
 While connected to ComfyUI, this same check also drives small color
 indicators directly in the Library list: green for an exact match,
@@ -290,22 +448,46 @@ entry is left completely untouched. Active/Inactive state and folder
 placement come along with the import. A report afterward lists exactly
 what was imported and what was skipped.
 
+LoRA models travel with the export too: the model list (names, preset
+fields, LoRA-list sources) and each model's own Active/Inactive map are
+merged in, matched by internal id rather than by name. Models the zip
+brings that you did not have are added and reported as **Added LoRA
+models** (a name that is already taken gets a " (2)" suffix), and their
+per-entry bindings arrive with the entries.
+
 ## In-app guide
 
 Press **F1**, or click **❓ Guide** in the top bar, anywhere in the app
 for a built-in walkthrough — the actual order to do things in on first
-launch, how subfolders/Tools/Active-Inactive/the LoRA Manager/the
-generation queue work, and the ComfyUI "last active workflow tab"
-behavior from above. English is fully written; other languages are
+launch, how subfolders/Tools/Active-Inactive/the LoRA Manager/models and
+the Sampling card/the generation queue work, and the ComfyUI "last active
+workflow tab" behavior from above. English is fully written; other languages are
 switchable from the same window and explicitly marked if a section is
 still pending translation, rather than silently falling back to
 English without saying so.
 
-## Changelog
+## What's new
 
-The full per-session history lives in [CHANGELOG.md](CHANGELOG.md).
-Most recent changes:
-
+- **Models** — one LoRA list per base model, with per-model presets for
+  the diffusion model, text encoder, VAE, text-encoder type, Steps, CFG,
+  Sampler and Scheduler. Pick the active model in Settings, and share
+  another model's list for a finetune. Files, `type`, Sampler and
+  Scheduler are chosen from ComfyUI's own lists through an **Assign…**
+  dialog — nothing is typed by hand. See
+  [Models](#models-base-model-presets) and
+  [How model presets are patched](#how-model-presets-are-patched-into-the-graph).
+- **Per-list Active / Inactive** — each LoRA list keeps its own state;
+  entries bound only to other models start inactive and wake once when
+  you assign a LoRA under the current model.
+- **Fixes** — applying a LoRA candidate in the dependency check no longer
+  drops the entry's video link; the Library editor no longer writes a
+  stale LoRA path back after a candidate is applied; Library **Duplicate**
+  now carries extra LoRA bindings; expanding a model row in Settings no
+  longer crashes.
+- **Sampling card** — Steps / CFG / Sampler / Scheduler in the Builder
+  rail, filled from the active model and frozen into every queue item.
+- **History** — each ComfyUI generation now records the model that
+  produced it, with its files and sampling values.
 - **Character variations** — alternative looks for one character
   (nested in the Library, a *Variant* row in Builder), see above.
 - **Canon outfit aliases** and a **multi-character wrapper** setting.
@@ -326,7 +508,7 @@ prompt_forge_data/
 ├── styles/
 │   ├── cityStyle.txt
 │   ├── cityStyle.jpg           # optional reference image, same name as the entry
-│   └── cityStyle.meta.json     # optional: source URL / bound LoRA / force-to-start flag for this entry
+│   └── cityStyle.meta.json     # optional: source URL / bound LoRAs per model / force-to-start flag for this entry
 ├── scenarios/
 ├── characters/
 ├── outfits/
@@ -346,6 +528,8 @@ prompt_forge_data/
 ├── _settings.json                # theme, sounds, image-preview size, and other UI preferences
 ├── _folders.json                 # per-category library subfolder placement (UI only)
 ├── _active.json                  # per-category Active/Inactive state for entries and folders
+├── _lora_profiles.json           # LoRA models: names, preset fields, list sources, Default preset
+├── _active_<model id>.json       # Active/Inactive map for one model that owns its own LoRA list
 └── _comfy_previews/              # session-only cache of images/videos pulled from ComfyUI
                                    # wiped on every app restart, never holds your only copy
 ```
